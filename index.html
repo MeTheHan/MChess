@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MChess - Satranç</title>
+    <meta charset="utf-8">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: linear-gradient(135deg, #1a2980, #26d0ce); 
+            font-family: Arial; 
+            text-align: center; 
+            padding: 20px; 
+            color: white;
+            min-height: 100vh;
+        }
+        
+        h1 { margin: 20px; font-size: 32px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        
+        #setup {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px auto;
+            max-width: 400px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .color-choice {
+            margin: 15px 0;
+        }
+        
+        .color-btn {
+            padding: 12px 25px;
+            margin: 5px;
+            font-size: 16px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 2px solid transparent;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .color-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .color-btn.selected {
+            border-color: #4CAF50;
+            background: rgba(76, 175, 80, 0.3);
+        }
+        
+        #game {
+            display: none;
+        }
+        
+        #board {
+            width: 400px;
+            height: 400px;
+            margin: 20px auto;
+            border: 3px solid #333;
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .square {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .square:hover {
+            transform: scale(1.05);
+            z-index: 1;
+            position: relative;
+        }
+        
+        .white { background: #f0d9b5; }
+        .black { background: #b58863; }
+        
+        .selected { 
+            background: yellow !important; 
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+        .possible { 
+            background: #8f8 !important; 
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { background-color: #8f8; }
+            50% { background-color: #6c6; }
+            100% { background-color: #8f8; }
+        }
+        
+        .controls { 
+            margin: 20px; 
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 12px 25px;
+            margin: 5px;
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+            min-width: 120px;
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        button.secondary {
+            background: linear-gradient(45deg, #2196F3, #0b7dda);
+        }
+        
+        button.danger {
+            background: linear-gradient(45deg, #f44336, #da190b);
+        }
+        
+        #status {
+            margin: 20px;
+            padding: 15px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            font-size: 18px;
+            border-left: 5px solid #4CAF50;
+        }
+        
+        .player-indicator {
+            display: inline-block;
+            padding: 5px 15px;
+            margin: 0 10px;
+            border-radius: 20px;
+            font-weight: bold;
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .white-player { background: white; color: #333; }
+        .black-player { background: #333; color: white; }
+        
+        .current-turn {
+            box-shadow: 0 0 15px rgba(255,255,0,0.7);
+            animation: glow 1.5s infinite;
+        }
+        
+        @keyframes glow {
+            0% { box-shadow: 0 0 10px rgba(255,255,0,0.7); }
+            50% { box-shadow: 0 0 20px rgba(255,255,0,1); }
+            100% { box-shadow: 0 0 10px rgba(255,255,0,0.7); }
+        }
+        
+        #moves {
+            margin: 20px auto;
+            padding: 15px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            max-width: 500px;
+            max-height: 200px;
+            overflow-y: auto;
+            text-align: left;
+        }
+        
+        .move-item {
+            display: inline-block;
+            padding: 5px 10px;
+            margin: 3px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>♔ MChess - Satranç</h1>
+    
+    <!-- RENK SEÇİM EKRANI -->
+    <div id="setup">
+        <h2>Rengini Seç</h2>
+        <div class="color-choice">
+            <button class="color-btn" onclick="selectColor('white')" id="whiteBtn">⚪ Beyaz</button>
+            <button class="color-btn" onclick="selectColor('black')" id="blackBtn">⚫ Siyah</button>
+        </div>
+        <button onclick="startGame()" id="startBtn" style="margin-top: 20px;">OYUNU BAŞLAT</button>
+    </div>
+    
+    <!-- OYUN EKRANI -->
+    <div id="game">
+        <div id="status">
+            <span id="turnText">Sıra:</span>
+            <span class="player-indicator white-player" id="whiteIndicator">Beyaz</span>
+            <span class="player-indicator black-player" id="blackIndicator">Siyah</span>
+        </div>
+        
+        <div id="board"></div>
+        
+        <div class="controls">
+            <button onclick="newGame()">🔄 Yeni Oyun</button>
+            <button onclick="undo()" class="secondary">↩️ Geri Al</button>
+            <button onclick="flip()" class="secondary">🔄 Tahtayı Çevir</button>
+            <button onclick="resign()" class="danger">🏳️ Pes Et</button>
+        </div>
+        
+        <div id="moves"></div>
+    </div>
+
+<script>
+// OYUN AYARLARI
+let playerColor = 'white'; // Oyuncunun rengi
+let game = null;
+let selected = null;
+let boardFlipped = false;
+let moveHistory = [];
+
+// SATRANÇ MOTORU
+class ChessGame {
+    constructor(playerColor) {
+        this.board = this.createBoard();
+        this.turn = 'white'; // Her zaman beyaz başlar
+        this.playerColor = playerColor;
+        this.selected = null;
+        this.history = [];
+        this.initPieces();
+    }
+    
+    createBoard() {
+        let board = [];
+        for(let i=0; i<8; i++) {
+            board[i] = new Array(8).fill(null);
+        }
+        return board;
+    }
+    
+    initPieces() {
+        // Beyaz taşlar (büyük harf)
+        this.board[0] = ['♖','♘','♗','♕','♔','♗','♘','♖'];
+        this.board[1] = ['♙','♙','♙','♙','♙','♙','♙','♙'];
+        // Siyah taşlar (küçük harf)
+        this.board[6] = ['♟','♟','♟','♟','♟','♟','♟','♟'];
+        this.board[7] = ['♜','♞','♝','♛','♚','♝','♞','♜'];
+    }
+    
+    getPiece(row, col) {
+        return this.board[row][col];
+    }
+    
+    isWhitePiece(piece) {
+        return piece === piece.toUpperCase();
+    }
+    
+    move(fromRow, fromCol, toRow, toCol) {
+        const piece = this.board[fromRow][fromCol];
+        if(!piece) return false;
+        
+        // Doğru sırada mı?
+        const isWhiteTurn = this.turn === 'white';
+        const isWhitePiece = this.isWhitePiece(piece);
+        
+        if((isWhiteTurn && !isWhitePiece) || (!isWhiteTurn && isWhitePiece)) {
+            return false;
+        }
+        
+        // Kaydet
+        this.history.push({
+            from: {row: fromRow, col: fromCol},
+            to: {row: toRow, col: toCol},
+            piece: piece,
+            captured: this.board[toRow][toCol]
+        });
+        
+        // Hareket ettir
+        this.board[toRow][toCol] = piece;
+        this.board[fromRow][fromCol] = null;
+        
+        // Sıra değiş
+        this.turn = this.turn === 'white' ? 'black' : 'white';
+        return true;
+    }
+    
+    undo() {
+        if(this.history.length === 0) return false;
+        const last = this.history.pop();
+        this.board[last.from.row][last.from.col] = last.piece;
+        this.board[last.to.row][last.to.col] = last.captured;
+        this.turn = this.turn === 'white' ? 'black' : 'white';
+        return true;
+    }
+    
+    isPlayerTurn() {
+        return this.turn === this.playerColor;
+    }
+    
+    getCurrentPlayer() {
+        return this.turn === 'white' ? 'Beyaz' : 'Siyah';
+    }
+}
+
+// RENK SEÇİMİ
+function selectColor(color) {
+    playerColor = color;
+    document.getElementById('whiteBtn').classList.remove('selected');
+    document.getElementById('blackBtn').classList.remove('selected');
+    document.getElementById(color + 'Btn').classList.add('selected');
+}
+
+// OYUNU BAŞLAT
+function startGame() {
+    document.getElementById('setup').style.display = 'none';
+    document.getElementById('game').style.display = 'block';
+    
+    game = new ChessGame(playerColor);
+    moveHistory = [];
+    createBoard();
+    updateStatus();
+}
+
+// TAHTAYI OLUŞTUR
+function createBoard() {
+    const board = document.getElementById('board');
+    board.innerHTML = '';
+    
+    const rows = boardFlipped ? [7,6,5,4,3,2,1,0] : [0,1,2,3,4,5,6,7];
+    const cols = boardFlipped ? [7,6,5,4,3,2,1,0] : [0,1,2,3,4,5,6,7];
+    
+    for(let r=0; r<8; r++) {
+        for(let c=0; c<8; c++) {
+            const displayRow = rows[r];
+            const displayCol = cols[c];
+            
+            const square = document.createElement('div');
+            square.className = `square ${(r+c)%2===0 ? 'white' : 'black'}`;
+            square.dataset.row = displayRow;
+            square.dataset.col = displayCol;
+            
+            const piece = game.getPiece(displayRow, displayCol);
+            if(piece) {
+                square.textContent = piece;
+                square.style.color = game.isWhitePiece(piece) ? 'white' : 'black';
+                square.style.textShadow = game.isWhitePiece(piece) 
+                    ? '1px 1px 3px black' 
+                    : '1px 1px 3px white';
+            }
+            
+            // Oyuncu sırasındaysa tıklanabilir
+            if(game.isPlayerTurn() && piece && game.isWhitePiece(piece) === (game.turn === 'white')) {
+                square.onclick = () => handleClick(displayRow, displayCol);
+                square.style.cursor = 'pointer';
+            } else if(game.isPlayerTurn() && !piece && selected) {
+                // Boş kareye hamle yapma
+                square.onclick = () => handleClick(displayRow, displayCol);
+                square.style.cursor = 'pointer';
+            } else {
+                square.style.cursor = 'default';
+            }
+            
+            board.appendChild(square);
+        }
+    }
+    
+    updateMoves();
+}
+
+// TIKLAMA İŞLEMİ
+function handleClick(row, col) {
+    const piece = game.getPiece(row, col);
+    
+    if(selected) {
+        // Taşı hareket ettir
+        if(game.move(selected.row, selected.col, row, col)) {
+            // Hamleyi kaydet
+            const from = String.fromCharCode(97+selected.col) + (8-selected.row);
+            const to = String.fromCharCode(97+col) + (8-row);
+            moveHistory.push(`${from}→${to}`);
+            
+            selected = null;
+            createBoard();
+            updateStatus();
+            
+            // 2 saniye sonra AI hamlesi (eğer siyah seçtiyse ve sıra siyahsa)
+            if(playerColor === 'white' && game.turn === 'black') {
+                setTimeout(makeAIMove, 1000);
+            } else if(playerColor === 'black' && game.turn === 'white') {
+                setTimeout(makeAIMove, 1000);
+            }
+        } else {
+            // Eğer başka taş seçilirse
+            if(piece && game.isWhitePiece(piece) === (game.turn === game.playerColor)) {
+                selected = {row, col};
+                highlightSquare(row, col);
+            } else {
+                selected = null;
+                createBoard();
+            }
+        }
+    } else {
+        // Taş seç
+        if(piece && game.isWhitePiece(piece) === (game.turn === game.playerColor)) {
+            selected = {row, col};
+            highlightSquare(row, col);
+        }
+    }
+}
+
+// BASİT AI (Rastgele hamle)
+function makeAIMove() {
+    if(!game.isPlayerTurn()) {
+        const moves = [];
+        
+        // Tüm taşları bul
+        for(let row=0; row<8; row++) {
+            for(let col=0; col<8; col++) {
+                const piece = game.getPiece(row, col);
+                if(piece && game.isWhitePiece(piece) === (game.turn === 'white')) {
+                    // Rastgele bir yere hareket ettir
+                    for(let r=0; r<8; r++) {
+                        for(let c=0; c<8; c++) {
+                            if(game.board[r][c] === null) {
+                                moves.push({from: {row, col}, to: {row: r, col: c}});
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if(moves.length > 0) {
+            const randomMove = moves[Math.floor(Math.random() * moves.length)];
+            if(game.move(randomMove.from.row, randomMove.from.col, randomMove.to.row, randomMove.to.col)) {
+                // Hamleyi kaydet
+                const from = String.fromCharCode(97+randomMove.from.col) + (8-randomMove.from.row);
+                const to = String.fromCharCode(97+randomMove.to.col) + (8-randomMove.to.row);
+                moveHistory.push(`${from}→${to}`);
+                
+                createBoard();
+                updateStatus();
+            }
+        }
+    }
+}
+
+// KARE VURGULA
+function highlightSquare(row, col) {
+    document.querySelectorAll('.square').forEach(sq => {
+        sq.classList.remove('selected', 'possible');
+        if(parseInt(sq.dataset.row) === row && parseInt(sq.dataset.col) === col) {
+            sq.classList.add('selected');
+        }
+    });
+}
+
+// DURUM GÜNCELLE
+function updateStatus() {
+    const whiteIndicator = document.getElementById('whiteIndicator');
+    const blackIndicator = document.getElementById('blackIndicator');
+    
+    // Vurgulamaları temizle
+    whiteIndicator.classList.remove('current-turn');
+    blackIndicator.classList.remove('current-turn');
+    
+    // Kimin sırası olduğunu göster
+    if(game.turn === 'white') {
+        whiteIndicator.classList.add('current-turn');
+        document.getElementById('turnText').textContent = 'Sıra:';
+    } else {
+        blackIndicator.classList.add('current-turn');
+        document.getElementById('turnText').textContent = 'Sıra:';
+    }
+    
+    // Oyuncu bilgisi
+    if(game.playerColor === 'white') {
+        document.getElementById('turnText').innerHTML += ` <small>(Siz Beyaz)</small>`;
+    } else {
+        document.getElementById('turnText').innerHTML += ` <small>(Siz Siyah)</small>`;
+    }
+}
+
+// HAMLE LİSTESİ
+function updateMoves() {
+    const movesDiv = document.getElementById('moves');
+    movesDiv.innerHTML = '<strong>Hamle Geçmişi:</strong><br>';
+    
+    for(let i=0; i<moveHistory.length; i++) {
+        const moveNum = Math.floor(i/2) + 1;
+        if(i % 2 === 0) {
+            movesDiv.innerHTML += `<span style="color:#ccc">${moveNum}.</span> `;
+        }
+        movesDiv.innerHTML += `<span class="move-item">${moveHistory[i]}</span> `;
+        if(i % 2 === 1) movesDiv.innerHTML += '<br>';
+    }
+    
+    movesDiv.scrollTop = movesDiv.scrollHeight;
+}
+
+// KONTROLLER
+function newGame() {
+    document.getElementById('setup').style.display = 'block';
+    document.getElementById('game').style.display = 'none';
+    selected = null;
+    moveHistory = [];
+}
+
+function undo() {
+    if(game.undo()) {
+        selected = null;
+        moveHistory.pop();
+        createBoard();
+        updateStatus();
+        updateMoves();
+    }
+}
+
+function flip() {
+    boardFlipped = !boardFlipped;
+    createBoard();
+}
+
+function resign() {
+    alert(playerColor === 'white' ? 'Siyah kazandı! (Pes)' : 'Beyaz kazandı! (Pes)');
+    newGame();
+}
+
+// SAYFA YÜKLENİNCE
+window.onload = function() {
+    selectColor('white'); // Varsayılan olarak beyaz seçili
+};
+</script>
+</body>
+</html>
