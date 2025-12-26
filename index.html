@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MChess - Satranç Oyunu</title>
+    <!-- DOĞRU CHESSBOARD.JS CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        
+        #board {
+            width: 480px;
+            height: 480px;
+            margin: 20px auto;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .status {
+            font-size: 1.2em;
+            margin: 20px auto;
+            padding: 15px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            border-left: 5px solid #4CAF50;
+            max-width: 500px;
+        }
+        
+        .controls {
+            margin: 20px 0;
+        }
+        
+        button {
+            padding: 12px 24px;
+            margin: 8px;
+            font-size: 16px;
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        button.secondary {
+            background: linear-gradient(45deg, #2196F3, #0b7dda);
+        }
+        
+        button.danger {
+            background: linear-gradient(45deg, #f44336, #da190b);
+        }
+        
+        .moves {
+            margin: 20px auto;
+            padding: 15px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            max-width: 500px;
+            font-family: 'Courier New', monospace;
+            text-align: left;
+        }
+        
+        .move-item {
+            padding: 5px 10px;
+            margin: 2px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            display: inline-block;
+        }
+        
+        /* Satranç tahtası renkleri */
+        .board-b72b1 {
+            border: 2px solid #404040 !important;
+        }
+        
+        .square-55d63 {
+            background-color: #f0d9b5 !important;
+        }
+        
+        .black-3c85d {
+            background-color: #b58863 !important;
+        }
+        
+        .highlight1-32417, .highlight2-9c5d2 {
+            background-color: rgba(255, 255, 0, 0.4) !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>♔ MChess - Online Satranç</h1>
+        <div class="status" id="status">Oyun başladı! Beyaz hamle yapın.</div>
+        
+        <div id="board"></div>
+        
+        <div class="controls">
+            <button onclick="newGame()">🔄 Yeni Oyun</button>
+            <button onclick="undoMove()" class="secondary">↩️ Geri Al</button>
+            <button onclick="flipBoard()" class="secondary">🔄 Tahtayı Çevir</button>
+            <button onclick="toggleAI()" id="aiBtn">🤖 AI: Açık</button>
+            <button onclick="showHint()" class="secondary">💡 İpucu</button>
+        </div>
+        
+        <div class="moves" id="moves">
+            <strong>Hamle Geçmişi:</strong><br>
+            <div id="movesList"></div>
+        </div>
+        
+        <div style="margin-top: 20px; color: rgba(255,255,255,0.7);">
+            <p>GitHub: <a href="https://github.com/MeTheHan/MChess" style="color: #4CAF50;">MeTheHan/MChess</a></p>
+        </div>
+    </div>
+
+    <!-- DOĞRU SIRAYLA KÜTÜPHANELER -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+
+    <script>
+    // ---------- DEĞİŞKENLER ----------
+    let game = new Chess();
+    let board = null;
+    let aiEnabled = true;
+    let moveHistory = [];
+    
+    // ---------- TAŞ GÖRSELLERİ (KESİN ÇALIŞAN) ----------
+    function pieceTheme(piece) {
+        // Chessboard.js formatı: 'wK', 'bQ' gibi
+        // Lichess'ten SVG taşlar (CORS sorunu yok)
+        const lichessBase = 'https://lichess1.org/assets/_Oo5YQb/piece/merida';
+        
+        const pieceMap = {
+            'wK': `${lichessBase}/wK.svg`,
+            'wQ': `${lichessBase}/wQ.svg`,
+            'wR': `${lichessBase}/wR.svg`,
+            'wB': `${lichessBase}/wB.svg`,
+            'wN': `${lichessBase}/wN.svg`,
+            'wP': `${lichessBase}/wP.svg`,
+            'bK': `${lichessBase}/bK.svg`,
+            'bQ': `${lichessBase}/bQ.svg`,
+            'bR': `${lichessBase}/bR.svg`,
+            'bB': `${lichessBase}/bB.svg`,
+            'bN': `${lichessBase}/bN.svg`,
+            'bP': `${lichessBase}/bP.svg`
+        };
+        
+        return pieceMap[piece];
+    }
+    
+    // ---------- TAHTAYI OLUŞTUR ----------
+    function initBoard() {
+        console.log("Tahta başlatılıyor...");
+        
+        // Chessboard'ı oluştur
+        board = Chessboard('board', {
+            draggable: true,
+            position: 'start',
+            pieceTheme: pieceTheme,
+            onDragStart: onDragStart,
+            onDrop: onDrop,
+            onSnapEnd: onSnapEnd,
+            orientation: 'white',
+            showNotation: true
+        });
+        
+        console.log("Tahta oluşturuldu:", board);
+        
+        // Oyun durumunu güncelle
+        updateStatus();
+        updateMoves();
+    }
+    
+    // ---------- OYUN FONKSİYONLARI ----------
+    function onDragStart(source, piece, position, orientation) {
+        // Oyun bitti mi?
+        if (game.game_over()) {
+            console.log("Oyun bitti!");
+            return false;
+        }
+        
+        // Doğru renk sırasında mı?
+        if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
+            (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
+            return false;
+        }
+        
+        // AI kapalıysa sadece beyaz
+        if (!aiEnabled && piece.search(/^b/) !== -1) return false;
+        
+        return true;
+    }
+    
+    function onDrop(source, target) {
+        console.log(`Hamle: ${source} -> ${target}`);
+        
+        try {
+            // Hamleyi dene
+            const move = game.move({
+                from: source,
+                to: target,
+                promotion: 'q' // Vezir promosyonu
+            });
+            
+            // Geçersiz hamle
+            if (move === null) {
+                console.log("Geçersiz hamle!");
+                return 'snapback';
+            }
+            
+            console.log("Hamle başarılı:", move);
+            
+            // Hamleyi kaydet
+            moveHistory.push({
+                number: moveHistory.length + 1,
+                san: move.san,
+                color: move.color
+            });
+            
+            // Tahtayı güncelle
+            board.position(game.fen());
+            
+            // Oyun durumunu güncelle
+            updateStatus();
+            updateMoves();
+            
+            // AI hamlesi yap
+            if (aiEnabled && game.turn() === 'b' && !game.game_over()) {
+                setTimeout(makeAIMove, 600);
+            }
+            
+            return true;
+            
+        } catch (error) {
+            console.error("Hamle hatası:", error);
+            return 'snapback';
+        }
+    }
+    
+    function onSnapEnd() {
+        // Tahta pozisyonunu güncelle
+        board.position(game.fen());
+    }
+    
+    function makeAIMove() {
+        if (game.game_over()) return;
+        
+        try {
+            // Tüm olası hamleleri al
+            const moves = game.moves();
+            console.log("AI için hamle sayısı:", moves.length);
+            
+            if (moves.length === 0) return;
+            
+            // Rastgele bir hamle seç (basit AI)
+            const randomIndex = Math.floor(Math.random() * moves.length);
+            const move = game.move(moves[randomIndex]);
+            
+            // Hamleyi kaydet
+            moveHistory.push({
+                number: moveHistory.length + 1,
+                san: move.san,
+                color: move.color
+            });
+            
+            // Tahtayı güncelle
+            board.position(game.fen());
+            
+            // Oyun durumunu güncelle
+            updateStatus();
+            updateMoves();
+            
+        } catch (error) {
+            console.error("AI hamlesi hatası:", error);
+        }
+    }
+    
+    // ---------- OYUN DURUMU ----------
+    function updateStatus() {
+        let status = '';
+        let statusColor = '#4CAF50';
+        
+        if (game.in_checkmate()) {
+            status = '🎯 ŞAH MAT! ' + (game.turn() === 'w' ? 'Siyah' : 'Beyaz') + ' kazandı!';
+            statusColor = '#f44336';
+        } else if (game.in_draw()) {
+            status = '🤝 BERABERE!';
+            statusColor = '#FF9800';
+        } else if (game.in_stalemate()) {
+            status = '🤝 PAT! Berabere.';
+            statusColor = '#FF9800';
+        } else if (game.in_check()) {
+            status = '⚡ ŞAH! Sıra: ' + (game.turn() === 'w' ? 'Beyaz' : 'Siyah');
+            statusColor = '#FFC107';
+        } else {
+            status = 'Sıra: ' + (game.turn() === 'w' ? '⚪ Beyaz' : '⚫ Siyah');
+        }
+        
+        const statusElement = document.getElementById('status');
+        statusElement.textContent = status;
+        statusElement.style.borderLeftColor = statusColor;
+        
+        // Oyun bittiyse AI'yı durdur
+        if (game.game_over()) {
+            console.log("Oyun bitti, AI durduruldu.");
+        }
+    }
+    
+    // ---------- HAMLE LİSTESİ ----------
+    function updateMoves() {
+        const movesList = document.getElementById('movesList');
+        movesList.innerHTML = '';
+        
+        // Hamleleri 2'li gruplar halinde göster
+        for (let i = 0; i < moveHistory.length; i += 2) {
+            const moveNum = Math.floor(i / 2) + 1;
+            const whiteMove = moveHistory[i];
+            const blackMove = moveHistory[i + 1];
+            
+            const moveElement = document.createElement('div');
+            moveElement.style.margin = '5px 0';
+            moveElement.innerHTML = `
+                <span style="color: #aaa; margin-right: 10px;">${moveNum}.</span>
+                <span class="move-item" style="background: rgba(255,255,255,0.2);">${whiteMove?.san || ''}</span>
+                <span class="move-item" style="background: rgba(0,0,0,0.3);">${blackMove?.san || ''}</span>
+            `;
+            
+            movesList.appendChild(moveElement);
+        }
+        
+        // En sona kaydır
+        movesList.scrollTop = movesList.scrollHeight;
+    }
+    
+    // ---------- KONTROLLER ----------
+    function newGame() {
+        console.log("Yeni oyun başlatılıyor...");
+        
+        // Yeni oyun
+        game = new Chess();
+        moveHistory = [];
+        
+        // Tahtayı sıfırla
+        if (board) {
+            board.position('start');
+        }
+        
+        // UI'ı güncelle
+        updateStatus();
+        updateMoves();
+        
+        // AI'yı başlat
+        if (aiEnabled && game.turn() === 'b') {
+            setTimeout(makeAIMove, 800);
+        }
+        
+        console.log("Yeni oyun başladı!");
+    }
+    
+    function undoMove() {
+        if (moveHistory.length === 0) return;
+        
+        // Son hamleyi geri al
+        game.undo();
+        moveHistory.pop();
+        
+        // Eğer AI varsa onun hamlesini de geri al
+        if (aiEnabled && game.turn() === 'b') {
+            game.undo();
+            moveHistory.pop();
+        }
+        
+        // Tahtayı güncelle
+        board.position(game.fen());
+        
+        // UI'ı güncelle
+        updateStatus();
+        updateMoves();
+    }
+    
+    function flipBoard() {
+        if (board) {
+            const orientation = board.orientation();
+            board.orientation(orientation === 'white' ? 'black' : 'white');
+        }
+    }
+    
+    function toggleAI() {
+        aiEnabled = !aiEnabled;
+        const btn = document.getElementById('aiBtn');
+        btn.textContent = aiEnabled ? '🤖 AI: Açık' : '👤 AI: Kapalı';
+        btn.style.background = aiEnabled 
+            ? 'linear-gradient(45deg, #4CAF50, #45a049)' 
+            : 'linear-gradient(45deg, #9E9E9E, #757575)';
+    }
+    
+    function showHint() {
+        if (game.game_over()) return;
+        
+        const moves = game.moves();
+        if (moves.length === 0) return;
+        
+        const hint = moves[Math.floor(Math.random() * moves.length)];
+        alert(`💡 İpucu: ${hint} hamlesini dene!`);
+    }
+    
+    // ---------- SAYFA YÜKLENDİĞİNDE ----------
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log("DOM yüklendi, tahta başlatılıyor...");
+        initBoard();
+        
+        // AI'yı başlat
+        if (aiEnabled && game.turn() === 'b') {
+            setTimeout(makeAIMove, 1000);
+        }
+    });
+    </script>
+</body>
+</html>
